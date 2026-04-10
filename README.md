@@ -53,7 +53,7 @@ By using this software, you agree to use it solely for learning purposes.
 
 ## How to Install
 
-Before you can run the AI Hedge Fund, you'll need to install it and set up your API keys. These steps are common to both the full-stack web application and command line interface.
+Before you can run the AI Hedge Fund, you'll need to install it. These steps are common to both the full-stack web application and command line interface.
 
 ### 1. Clone the Repository
 
@@ -62,34 +62,7 @@ git clone https://github.com/virattt/ai-hedge-fund.git
 cd ai-hedge-fund
 ```
 
-### 2. Set up API keys
-
-Create a `.env` file for your API keys:
-```bash
-# Create .env file for your API keys (in the root directory)
-cp .env.example .env
-```
-
-Open and edit the `.env` file to add your API keys:
-```bash
-# For running LLMs hosted by openai (gpt-4o, gpt-4o-mini, etc.)
-OPENAI_API_KEY=your-openai-api-key
-
-# For getting financial data to power the hedge fund
-FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
-```
-
-**Important**: You must set at least one LLM API key (e.g. `OPENAI_API_KEY`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, or `DEEPSEEK_API_KEY`) for the hedge fund to work. 
-
-## How to Run
-
-### ⌨️ Command Line Interface
-
-You can run the AI Hedge Fund directly via terminal. This approach offers more granular control and is useful for automation, scripting, and integration purposes.
-
-<img width="992" alt="Screenshot 2025-01-06 at 5 50 17 PM" src="https://github.com/user-attachments/assets/e8ca04bf-9989-4a7d-a8b4-34e04666663b" />
-
-#### Quick Start
+### 2. Install Dependencies
 
 1. Install Poetry (if not already installed):
 ```bash
@@ -101,21 +74,65 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
-#### Run the AI Hedge Fund
+### 3. Set up API keys (optional)
+
+**No API keys are required** to run the hedge fund. Financial data is sourced from [yfinance](https://github.com/ranaroussi/yfinance) (free, no key needed), and LLMs can be run via the Claude CLI or Codex CLI using your existing subscription.
+
+If you want to use other LLM providers, create a `.env` file:
 ```bash
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA
+cp .env.example .env
 ```
 
-You can also specify a `--ollama` flag to run the AI hedge fund using local LLMs.
+Then add whichever keys you need:
+```bash
+OPENAI_API_KEY=your-openai-api-key
+ANTHROPIC_API_KEY=your-anthropic-api-key
+# ... see .env.example for all options
+```
+
+## How to Run
+
+### ⌨️ Command Line Interface
+
+You can run the AI Hedge Fund directly via terminal. This approach offers more granular control and is useful for automation, scripting, and integration purposes.
+
+#### Quick Start (no API keys needed)
 
 ```bash
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA --ollama
+poetry run python src/main.py --tickers AAPL,MSFT,NVDA
 ```
+
+When prompted to select a model, choose any **"via Claude CLI"** or **"via Codex CLI"** option at the top of the list — these use your existing [Claude Code](https://claude.ai/code) or [Codex CLI](https://github.com/openai/codex) subscription with no API key required.
+
+#### Common flags
+
+```bash
+# Skip interactive pickers with flags
+poetry run python src/main.py \
+  --tickers AAPL,MSFT,NVDA \
+  --analysts-all \
+  --model claude-sonnet-4-6 \
+  --start-date 2024-01-01 \
+  --end-date 2024-12-31 \
+  --show-reasoning
+```
+
+| Flag | Description |
+|------|-------------|
+| `--tickers` | Comma-separated list of stock tickers |
+| `--analysts-all` | Use all 19 analysts (skips interactive picker) |
+| `--analysts` | Comma-separated list of specific analysts |
+| `--model` | Model name to use (skips model picker) |
+| `--start-date` | Start date in YYYY-MM-DD format |
+| `--end-date` | End date in YYYY-MM-DD format |
+| `--show-reasoning` | Print each agent's full reasoning |
+| `--initial-cash` | Starting portfolio cash (default: 100,000) |
+| `--ollama` | Use a local Ollama model |
 
 You can optionally specify the start and end dates to make decisions over a specific time period.
 
 ```bash
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01
+poetry run python src/main.py --tickers AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01
 ```
 
 #### Run the Backtester
