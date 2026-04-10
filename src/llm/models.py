@@ -8,6 +8,7 @@ from langchain_xai import ChatXAI
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from langchain_gigachat import GigaChat
 from langchain_ollama import ChatOllama
+from src.llm.cli_models import ChatClaudeCLI, ChatCodexCLI
 from enum import Enum
 from pydantic import BaseModel
 from typing import Tuple, List
@@ -19,6 +20,8 @@ class ModelProvider(str, Enum):
 
     ALIBABA = "Alibaba"
     ANTHROPIC = "Anthropic"
+    CLAUDE_CLI = "Claude CLI"
+    CODEX_CLI = "Codex CLI"
     DEEPSEEK = "DeepSeek"
     GOOGLE = "Google"
     GROQ = "Groq"
@@ -50,6 +53,9 @@ class LLMModel(BaseModel):
     def has_json_mode(self) -> bool:
         """Check if the model supports JSON mode"""
         if self.is_deepseek() or self.is_gemini():
+            return False
+        # CLI providers use manual JSON extraction from their text output
+        if self.provider in (ModelProvider.CLAUDE_CLI, ModelProvider.CODEX_CLI):
             return False
         # Only certain Ollama models support JSON mode
         if self.is_ollama():
@@ -134,8 +140,12 @@ def get_models_list():
     ]
 
 
-def get_model(model_name: str, model_provider: ModelProvider, api_keys: dict = None) -> ChatOpenAI | ChatGroq | ChatOllama | GigaChat | None:
-    if model_provider == ModelProvider.GROQ:
+def get_model(model_name: str, model_provider: ModelProvider, api_keys: dict = None) -> ChatOpenAI | ChatGroq | ChatOllama | GigaChat | ChatClaudeCLI | ChatCodexCLI | None:
+    if model_provider == ModelProvider.CLAUDE_CLI:
+        return ChatClaudeCLI(model=model_name)
+    elif model_provider == ModelProvider.CODEX_CLI:
+        return ChatCodexCLI(model=model_name)
+    elif model_provider == ModelProvider.GROQ:
         api_key = (api_keys or {}).get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
         if not api_key:
             # Print error to console

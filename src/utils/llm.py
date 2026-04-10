@@ -107,7 +107,7 @@ def create_default_response(model_class: type[BaseModel]) -> BaseModel:
 
 
 def extract_json_from_response(content: str) -> dict | None:
-    """Extracts JSON from markdown-formatted response."""
+    """Extracts JSON from a response — handles markdown ```json blocks and raw JSON."""
     try:
         json_start = content.find("```json")
         if json_start != -1:
@@ -116,6 +116,13 @@ def extract_json_from_response(content: str) -> dict | None:
             if json_end != -1:
                 json_text = json_text[:json_end].strip()
                 return json.loads(json_text)
+    except Exception:
+        pass
+    # Fallback: try parsing the whole content as raw JSON (used by CLI providers)
+    try:
+        stripped = content.strip()
+        if stripped.startswith("{") or stripped.startswith("["):
+            return json.loads(stripped)
     except Exception as e:
         print(f"Error extracting JSON from response: {e}")
     return None

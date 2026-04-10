@@ -1,5 +1,30 @@
 [
   {
+    "display_name": "Claude Sonnet 4.6 (via Claude CLI — no API key)",
+    "model_name": "claude-sonnet-4-6",
+    "provider": "Claude CLI"
+  },
+  {
+    "display_name": "Claude Opus 4.6 (via Claude CLI — no API key)",
+    "model_name": "claude-opus-4-6",
+    "provider": "Claude CLI"
+  },
+  {
+    "display_name": "Claude Haiku 4.5 (via Claude CLI — no API key)",
+    "model_name": "claude-haiku-4-5-20251001",
+    "provider": "Claude CLI"
+  },
+  {
+    "display_name": "o3 (via Codex CLI — no API key)",
+    "model_name": "o3",
+    "provider": "Codex CLI"
+  },
+  {
+    "display_name": "o4-mini (via Codex CLI — no API key)",
+    "model_name": "o4-mini",
+    "provider": "Codex CLI"
+  },
+  {
     "display_name": "Grok 4",
     "model_name": "grok-4-0709",
     "provider": "xAI"
