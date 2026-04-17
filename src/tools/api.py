@@ -1,5 +1,7 @@
 import datetime
 import logging
+import os
+import requests
 import pandas as pd
 import yfinance as yf
 
@@ -475,6 +477,77 @@ def get_insider_trades(
     return trades
 
 
+def _fetch_news_alphavantage(
+    ticker: str,
+    end_date: str,
+    start_date: str | None,
+    limit: int,
+    av_api_key: str,
+) -> list[CompanyNews]:
+    """Fetch news from Alpha Vantage NEWS_SENTIMENT endpoint."""
+    # Alpha Vantage time format: YYYYMMDDTHHMM
+    time_to = pd.Timestamp(end_date).strftime("%Y%m%dT2359")
+    params = {
+        "function": "NEWS_SENTIMENT",
+        "tickers": ticker,
+        "limit": min(limit, 1000),
+        "sort": "LATEST",
+        "time_to": time_to,
+        "apikey": av_api_key,
+    }
+    if start_date:
+        params["time_from"] = pd.Timestamp(start_date).strftime("%Y%m%dT0000")
+
+    try:
+        response = requests.get("https://www.alphavantage.co/query", params=params, timeout=30)
+        if response.status_code != 200:
+            logger.warning("Alpha Vantage news returned %s for %s", response.status_code, ticker)
+            return []
+        data = response.json()
+    except Exception as e:
+        logger.warning("Alpha Vantage news request failed for %s: %s", ticker, e)
+        return []
+
+    if "Information" in data or "Note" in data:
+        msg = data.get("Information") or data.get("Note", "")
+        logger.warning("Alpha Vantage API message: %s", msg[:120])
+        return []
+
+    articles = data.get("feed", [])
+    news_list: list[CompanyNews] = []
+
+    for article in articles:
+        try:
+            # time_published format: YYYYMMDDTHHMMSS
+            raw_ts = article.get("time_published", "")
+            pub_date = datetime.datetime.strptime(raw_ts, "%Y%m%dT%H%M%S")
+
+            authors = article.get("authors", [])
+            author = authors[0] if authors else None
+
+            # Prefer ticker-specific sentiment if available
+            sentiment = article.get("overall_sentiment_label")
+            for ts in article.get("ticker_sentiment", []):
+                if ts.get("ticker", "").upper() == ticker.upper():
+                    sentiment = ts.get("ticker_sentiment_label", sentiment)
+                    break
+
+            news_list.append(CompanyNews(
+                ticker=ticker,
+                title=article.get("title", ""),
+                author=author,
+                source=article.get("source", ""),
+                date=pub_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                url=article.get("url", ""),
+                sentiment=sentiment,
+            ))
+        except Exception as e:
+            logger.debug("Skipping Alpha Vantage article: %s", e)
+            continue
+
+    return news_list
+
+
 def get_company_news(
     ticker: str,
     end_date: str,
@@ -482,11 +555,21 @@ def get_company_news(
     limit: int = 1000,
     api_key: str = None,
 ) -> list[CompanyNews]:
-    """Fetch company news from cache or yfinance."""
+    """Fetch company news — uses Alpha Vantage if ALPHA_VANTAGE_API_KEY is set, otherwise yfinance."""
     cache_key = f"{ticker}_{start_date or 'none'}_{end_date}_{limit}"
     if cached_data := _cache.get_company_news(cache_key):
         return [CompanyNews(**news) for news in cached_data]
 
+    av_api_key = os.environ.get("ALPHA_VANTAGE_API_KEY")
+
+    if av_api_key:
+        news_list = _fetch_news_alphavantage(ticker, end_date, start_date, limit, av_api_key)
+        if news_list:
+            _cache.set_company_news(cache_key, [n.model_dump() for n in news_list])
+            return news_list
+        logger.info("Alpha Vantage returned no news for %s, falling back to yfinance", ticker)
+
+    # Fallback: yfinance (no date filtering, ~10 current headlines only)
     try:
         stock = yf.Ticker(ticker)
         raw_news = stock.news or []
@@ -500,29 +583,24 @@ def get_company_news(
     end_dt = pd.Timestamp(end_date)
     start_dt = pd.Timestamp(start_date) if start_date else None
 
-    news_list: list[CompanyNews] = []
+    news_list = []
     for item in raw_news:
         try:
             content = item.get("content", {})
             if not content:
                 continue
-
             pub_date_str = content.get("pubDate", "")
             if not pub_date_str:
                 continue
-
             pub_date = pd.Timestamp(pub_date_str)
             if pub_date.tz is not None:
                 pub_date = pub_date.tz_localize(None)
-
             if pub_date > end_dt:
                 continue
             if start_dt and pub_date < start_dt:
                 continue
-
             provider = content.get("provider", {})
             canonical = content.get("canonicalUrl", {})
-
             news_list.append(CompanyNews(
                 ticker=ticker,
                 title=content.get("title", ""),

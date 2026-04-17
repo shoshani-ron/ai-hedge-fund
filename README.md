@@ -78,13 +78,17 @@ poetry install
 
 **No API keys are required** to run the hedge fund. Financial data is sourced from [yfinance](https://github.com/ranaroussi/yfinance) (free, no key needed), and LLMs can be run via the Claude CLI or Codex CLI using your existing subscription.
 
-If you want to use other LLM providers, create a `.env` file:
+For better news coverage (date filtering + sentiment scores), add an [Alpha Vantage](https://www.alphavantage.co/support/#api-key) key — free tier is 25 requests/day. Without it, news falls back to yfinance (~10 current headlines only).
+
 ```bash
 cp .env.example .env
 ```
 
-Then add whichever keys you need:
 ```bash
+# Optional: richer news data with date filtering and sentiment
+ALPHA_VANTAGE_API_KEY=your-alpha-vantage-api-key
+
+# Optional: other LLM providers
 OPENAI_API_KEY=your-openai-api-key
 ANTHROPIC_API_KEY=your-anthropic-api-key
 # ... see .env.example for all options
